@@ -25,6 +25,7 @@ Arduino (value between 0 and 180).
 #### Start/End of Command
 * `4444`: Tells the Arduino to start listening for a new command
 * `5555`: Tells the Arduino that it can stop listening for new commands
+* `6666`: Tells the Arduino to reset
 
 ### Arduino Sends
 
