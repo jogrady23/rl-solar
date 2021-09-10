@@ -11,6 +11,8 @@ const int servo_2_pin = 5;
 int servo_1_position;
 int servo_2_position;
 
+const int SERIAL_BAUD_RATE = 9600;
+
 // for internal state
 const int MOTOR_CONTROL = 1000;
 const int MOTOR_POSITIONS = 2000;
@@ -94,12 +96,14 @@ void clear_code_array() {
 }
 
 // sends out the Arduino's status
-void broadcast_state() {
+void broadcast_state(long start) {
   Serial.print(STATUS_HEADER);
   Serial.print(DELIMITER);
   Serial.print(active_state);
   Serial.print(DELIMITER);
-  Serial.println(active_listening);
+  Serial.print(active_listening);
+  Serial.print(DELIMITER);
+  Serial.println(millis() - start);
 }
 
 // sends out data from the Arduino
@@ -120,7 +124,7 @@ void setup() {
   active_state = UNAVAILABLE;
   
   // Initialize Serial
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD_RATE);
   
   // Configure motor pins
   servo_1.attach(servo_1_pin);
@@ -142,10 +146,12 @@ void setup() {
 void loop() {
   // Listen for serial inputs
   int code = 0;
-  
+  long start = millis();
+  int initial_state = active_state;
   // If serial has bytes available, parse as int
   if (Serial.available() > 0) {
     code = Serial.parseInt();
+    Serial.flush();
 
     // check for reset request
     if (code == RESET) {
@@ -184,8 +190,9 @@ void loop() {
       }
     }
     // for any case, send the updated state message to Python
-    broadcast_state();
+    broadcast_state(start);
   }
+  
 
   // do whatever action is needed based on code array
   
