@@ -38,6 +38,19 @@ bool send_data;
 const int CODE_ARRAY_SIZE = 3;
 int code_array[CODE_ARRAY_SIZE];
 
+const int MAX_MESSAGE_CHARS = 32;
+char received_chars_array[MAX_MESSAGE_CHARS];
+
+void receive_multiple_inputs() {
+  char end_marker = '\n';
+  char last_received;
+  int index = 0;
+
+  while (Serial.available() > 0) {
+    
+  }
+}
+
 // Applies a safe 0-180 bound on any requested degree for writing to the Servo
 int degree_bounds(int degree) {
   int safe_degree;
