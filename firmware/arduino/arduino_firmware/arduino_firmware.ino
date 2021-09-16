@@ -31,7 +31,7 @@ const int DATA_HEADER = 2;
 const char DELIMITER = ',';
 
 int active_listening;
-int active_index = 0;
+int active_index;
 int active_state;
 bool send_data;
 
@@ -54,19 +54,14 @@ int degree_bounds(int degree) {
 }
 
 // Control a motor based on the code
-void motor_control(char code, int degree) {
-  // 1 = servo 1
-  if (code=='1') {
-    servo_1.write(degree_bounds(degree));
-    delay(1000);
-    servo_1_position = servo_1.read();
-  }
-  // 2 = servo 2
-  if (code=='2') {
-    servo_2.write(degree_bounds(degree));
-    delay(1000);
-    servo_2_position = servo_2.read();
-  }
+void motor_control(int motor_1_degree, int motor_2_degree) {
+  // write positions
+  servo_1.write(degree_bounds(motor_1_degree));
+  servo_2.write(degree_bounds(motor_2_degree));
+  delay(500);
+  // read positions
+  servo_1_position = servo_1.read();
+  servo_2_position = servo_2.read();
 }
 
 void power_measurement(){
@@ -75,16 +70,19 @@ void power_measurement(){
 
 void process_input_request() {
   // motor control
-  if (code_array[1] == 1000) {
-    void;
+  if (code_array[0] == 1000) {
+    motor_control(code_array[1], code_array[2]);
   }
   // motor positions
-  if (code_array[1] == 2000) {
+  else if (code_array[0] == 2000) {
     void;
   }
   // power measurements
-  if (code_array[1] == 3000) {
+  else if (code_array[0] == 3000) {
     void;
+  }
+  else {
+    active_state = ERROR_MESSAGE;
   }
 }
 
@@ -119,6 +117,14 @@ void broadcast_data() {
   // FIXME -- add power signal
 }
 
+void broadcast_code_array() {
+  Serial.print(code_array[0]);
+  Serial.print(DELIMITER);
+  Serial.print(code_array[1]);
+  Serial.print(DELIMITER);
+  Serial.println(code_array[2]);
+}
+
 void setup() {
   // Initialize active state
   active_state = UNAVAILABLE;
@@ -139,7 +145,8 @@ void setup() {
 
   // tell Python that the program is initialized
   active_state = ACKNOWLEDGE;
-  active_listening = 1;
+  active_listening = 0;
+  active_index = 0;
   send_data = false;
 }
 
@@ -158,7 +165,7 @@ void loop() {
       setup();
     }
     else {
-      // if state is not available
+      // if state is not unavailable
       if (active_state != UNAVAILABLE) {
         
         // If not currently reading a message
@@ -168,6 +175,7 @@ void loop() {
           if (code == LISTEN_START) {
             clear_code_array();
             active_listening = 1;
+            active_index = 0;
             active_state = ACKNOWLEDGE;
           }
           else {
@@ -185,16 +193,24 @@ void loop() {
           else {
             code_array[active_index] = code;
             active_state = ACKNOWLEDGE;
+            active_index += 1;
           }
         }
       }
     }
     // for any case, send the updated state message to Python
-    broadcast_state(start);
+    if (active_listening != 0) {
+      broadcast_state(start);
+    }
   }
   
-
   // do whatever action is needed based on code array
+  if (active_listening == 0 && active_state == UNAVAILABLE){
+    broadcast_code_array();
+    process_input_request();
+    active_listening = 1;
+    active_state = ACKNOWLEDGE;
+  }
   
   
   // Format message to broadcast at end of every loop

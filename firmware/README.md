@@ -11,11 +11,9 @@ successfully sent from Python and received by the Arduino.
 #### Motor Control
 
 * `1000`: Tells the Arduino that motor control is desired
-    * `1`: Tells the Arduino that motor 1 is the desired motor to control
-    * `2`: Tell the Arduino that motor 2 is the desired motor to control 
-    
-After these codes are received, the desired degree will be broadcasted by Python to 
-Arduino (value between 0 and 180).
+  * After these codes are received, the desired degree will be broadcasted by Python to 
+Arduino (value between 0 and 180)
+  * This broadcasts an array of [motor 1, motor 2] position
 
 #### Measurement Broadcast
 * `2000`: Tells the Arduino a measurement start/stop request is inbound
