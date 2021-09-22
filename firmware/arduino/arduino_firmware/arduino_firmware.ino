@@ -18,7 +18,6 @@ const int MOTOR_CONTROL = 1000;
 const int MOTOR_POSITIONS = 2000;
 const int POWER_TOGGLE = 3000;
 const int LISTEN_START = 4444;
-const int LISTEN_COMPLETE = 5555;
 const int RESET = 6666;
 
 // Arduino responses
@@ -35,21 +34,29 @@ int active_index;
 int active_state;
 bool send_data;
 
-const int CODE_ARRAY_SIZE = 3;
+// MESSAGE PROCESSING
+// --------------------
+
+// constants for message processing
+const char END_CHAR = '>';
+const char MESSAGE_TERMINATOR = '\n';
+
+// variables for holding the final processed codes
+const int CODE_ARRAY_SIZE = 5;
 int code_array[CODE_ARRAY_SIZE];
+int code_count;
 
+// interim variables for loading in straight serial data
 const int MAX_MESSAGE_CHARS = 32;
-char received_chars_array[MAX_MESSAGE_CHARS];
+char message_array[MAX_MESSAGE_CHARS];
+String serial_message;
 
-void receive_multiple_inputs() {
-  char end_marker = '\n';
-  char last_received;
-  int index = 0;
+// ===============================================
+// FUNCTIONS
+// ===============================================
 
-  while (Serial.available() > 0) {
-    
-  }
-}
+// SERVO-CONTROL RELATED
+// -----------------------------
 
 // Applies a safe 0-180 bound on any requested degree for writing to the Servo
 int degree_bounds(int degree) {
@@ -77,9 +84,15 @@ void motor_control(int motor_1_degree, int motor_2_degree) {
   servo_2_position = servo_2.read();
 }
 
+// POWER-MEASUREMENT RELATED
+// -----------------------------
+
 void power_measurement(){
   void;
 }
+
+// INPUT REQUEST HANDLING
+// -----------------------------
 
 void process_input_request() {
   // motor control
@@ -99,12 +112,75 @@ void process_input_request() {
   }
 }
 
+
+// CODE-PROCESSING RELATED
+// -----------------------------
+
 void clear_code_array() {
   for (int i = 0; i < CODE_ARRAY_SIZE; i++) {
     code_array[i] = 0;
   }
   active_index = 0;
 }
+
+// processes input string to extract codes
+void process_input_message (String serial_message) {
+  // find delimiters and endline
+  int delim_index_array[10];
+  int delim_count = 0;
+  int end_index = 0;
+
+  // convert the string to an array of character
+  serial_message.toCharArray(message_array, MAX_MESSAGE_CHARS);
+
+  // Identify the delimiter index locations and end character locations
+  for (int i = 0; i < MAX_MESSAGE_CHARS; i++) {
+    // find delimiter index
+    if (message_array[i] == DELIMITER) {
+      delim_index_array[delim_count] = i;
+      delim_count += 1;
+    }
+    // find message end index
+    if (message_array[i] == END_CHAR) {
+      end_index = i;
+    }
+  }
+
+  // If a valid input w/ end character, slice up array by delimiters to create an array of codes
+  if (end_index != 0) {
+    int loop_start_index = 0;
+    int code_array_index = 0;
+    // code count keeps track of number of codes
+    code_count = 0;
+
+    // first get the values between delimiters
+    for (int i = 0; i < delim_count; i++) {
+      String temp_string;
+      for (int j = loop_start_index; j < delim_index_array[i]; j++) {
+        temp_string += message_array[j];
+      }
+      // add to array
+      code_array[code_array_index] = temp_string.toInt();
+      code_count++;
+      // increment store location in array
+      code_array_index += 1;
+      // increment start index
+      loop_start_index = delim_index_array[i] + 1;
+    }
+    
+    // then add the last characters between final delim and end character
+    String temp_string;
+    for (int j = loop_start_index; j < end_index; j++) {
+      temp_string += message_array[j];
+    }
+    code_array[code_array_index] = temp_string.toInt();
+    code_count++;
+  }
+}
+
+
+// BROADCASTING RELATED
+// -----------------------------
 
 // sends out the Arduino's status
 void broadcast_state(long start) {
@@ -131,12 +207,21 @@ void broadcast_data() {
 }
 
 void broadcast_code_array() {
-  Serial.print(code_array[0]);
-  Serial.print(DELIMITER);
-  Serial.print(code_array[1]);
-  Serial.print(DELIMITER);
-  Serial.println(code_array[2]);
+  // add protection for empty code
+  if (code_count != 0) {
+    // print all but last with delimiter
+    for (int i = 0; i < code_count - 1; i++) {
+      Serial.print(code_array[i]);
+      Serial.print(DELIMITER);
+    }
+    // print last w/ newline
+    Serial.println(code_array[code_count - 1]);
+  }
 }
+
+// ===============================================
+// SETUP AND LOOP
+// ===============================================
 
 void setup() {
   // Initialize active state
@@ -164,67 +249,20 @@ void setup() {
 }
 
 void loop() {
-  // Listen for serial inputs
-  int code = 0;
+  // Loop timer for debugging
   long start = millis();
-  int initial_state = active_state;
-  // If serial has bytes available, parse as int
+  
+  // Listen for new commands
+  bool new_data = false;
   if (Serial.available() > 0) {
-    code = Serial.parseInt();
+    serial_message = Serial.readStringUntil(MESSAGE_TERMINATOR);
     Serial.flush();
-
-    // check for reset request
-    if (code == RESET) {
-      setup();
-    }
-    else {
-      // if state is not unavailable
-      if (active_state != UNAVAILABLE) {
-        
-        // If not currently reading a message
-        if (active_listening == 0) {
-          
-          // If requested to start listening
-          if (code == LISTEN_START) {
-            clear_code_array();
-            active_listening = 1;
-            active_index = 0;
-            active_state = ACKNOWLEDGE;
-          }
-          else {
-            active_state = ERROR_MESSAGE;
-          }
-        }
-        // Otherwise, assemble the char array until complete value arrives
-        else {
-          // if complete signal, stop listening and change state
-          if (code == LISTEN_COMPLETE) {
-            active_state = UNAVAILABLE;
-            active_listening = 0;
-          }
-          // else, add to char array
-          else {
-            code_array[active_index] = code;
-            active_state = ACKNOWLEDGE;
-            active_index += 1;
-          }
-        }
-      }
-    }
-    // for any case, send the updated state message to Python
-    if (active_listening != 0) {
-      broadcast_state(start);
-    }
+    new_data = true;
   }
-  
-  // do whatever action is needed based on code array
-  if (active_listening == 0 && active_state == UNAVAILABLE){
-    broadcast_code_array();
+  // If new command
+  if (new_data == true) {
+    process_input_message(serial_message);
     process_input_request();
-    active_listening = 1;
-    active_state = ACKNOWLEDGE;
+    broadcast_code_array();
   }
-  
-  
-  // Format message to broadcast at end of every loop
 }
