@@ -22,6 +22,9 @@ const int AVAILABLE = 8888;
 const int UNAVAILABLE = 8899;
 const int ERROR_MESSAGE = 9999;
 
+const int STATUS_HEADER = 1;
+const int DATA_HEADER = 2;
+
 bool active_listening = false;
 int active_index = 0;
 
@@ -94,6 +97,17 @@ void clear_code_array() {
   active_index = 0;
 }
 
+// sends out the Arduino's status
+void broadcast_status() {
+  
+}
+
+// sends out data from the Arduino
+void broadcast_data() {
+  // motor 1 position,motor 2 position,solar power
+  Serial.print(
+}
+
 void setup() {
   // Initialize Serial
   Serial.begin(9600);
@@ -141,11 +155,5 @@ void loop() {
   }
   
   
-  // put your main code here, to run repeatedly:
-  for (int i=0; i <= 180; i += 10) {
-    servo_1.write(i);
-    delay(200);
-    servo_2.write(i);
-    delay(1000);
-  }
+  // Format message to broadcast at end of every loop
 }

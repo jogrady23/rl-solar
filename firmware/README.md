@@ -6,46 +6,32 @@ and the Arduino firmware operating the motors / sending power measurements
 This system utilizes a call-and-response type approach to ensure motor commands are 
 successfully sent from Python and received by the Arduino.
 
-The Python agent has the following classes of commands to Arduino:
-* Motor control
-    * Move motor 1
-    * Move motor 2
-* Motor positions
-    * Get motor 1 position
-    * Get motor 2 position
-* Power measurement
-    * Start power measurement broadcast
-    * Stop power measurement broadcast
+### Arduino Recieves
 
-To simplify things on the Arduino end, we can use a distinct code for each of these actions, 
-such that Arduino listens for the code and the subsequent value to understand what action to 
-take.
-
-### Motor Control
+#### Motor Control
 
 * `1000`: Tells the Arduino that motor control is desired
-    * `1`: Tells the Arduino that motor 1 is the desired motor to control
-    * `2`: Tell the Arduino that motor 2 is the desired motor to control 
-    
-After these codes are received, the desired degree will be broadcasted by Python to 
-Arduino (value between 0 and 180).
+  * After these codes are received, the desired degree will be broadcasted by Python to 
+Arduino (value between 0 and 180)
+  * This broadcasts an array of [motor 1, motor 2] position
 
-### Motor Positions
-
-* `2000`: Tells the Arduino that the agent is requesting motor positions
-    * Arduino will send `<motor 1 position>,<motor 2 position>` to Python
+#### Measurement Broadcast
+* `2000`: Tells the Arduino a measurement start/stop request is inbound
+  * `0`: Stop measurement broadcast
+  * `1`: Start measurement broadcast
     
-### Power Measurement
-* `3000`: Tells the Arduino the agent wants to toggle power measurement
-    * `1`: Tells the Arduino to start broadcasting power measurement
-    * `2`: Tells the Arduino to stop broadcasting power measurement
-    
-### End of Command
-* `4444`: Tells the Arduino that it can stop listening for new commands
+#### Start/End of Command
+* `4444`: Tells the Arduino to start listening for a new command
+* `5555`: Tells the Arduino that it can stop listening for new commands
+* `6666`: Tells the Arduino to reset
 
-### Arduino Acknowledge
+### Arduino Sends
+
+#### Arduino Acknowledge
 * `1111`: The Arduino will broadcast this in response to a successfully received 
 message from Python
+* `8888`: Indicates the Arduino is completing an action and is not ready for a message
+* `9999`: Indicates the Arduino is requesting a sequence re-start / invalid data
   
 
     

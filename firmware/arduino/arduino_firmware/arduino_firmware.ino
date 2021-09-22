@@ -1,0 +1,268 @@
+// Import servo library
+#include <Servo.h>
+
+// Create two separate Servo objects for each Servo
+Servo servo_1;
+Servo servo_2;
+
+const int servo_1_pin = 3;
+const int servo_2_pin = 5;
+
+int servo_1_position;
+int servo_2_position;
+
+const int SERIAL_BAUD_RATE = 9600;
+
+// for internal state
+const int MOTOR_CONTROL = 1000;
+const int MOTOR_POSITIONS = 2000;
+const int POWER_TOGGLE = 3000;
+const int LISTEN_START = 4444;
+const int RESET = 6666;
+
+// Arduino responses
+const int ACKNOWLEDGE = 1111;
+const int UNAVAILABLE = 8888;
+const int ERROR_MESSAGE = 9999;
+
+const int STATUS_HEADER = 1;
+const int DATA_HEADER = 2;
+const char DELIMITER = ',';
+
+int active_listening;
+int active_index;
+int active_state;
+bool send_data;
+
+// MESSAGE PROCESSING
+// --------------------
+
+// constants for message processing
+const char END_CHAR = '>';
+const char MESSAGE_TERMINATOR = '\n';
+
+// variables for holding the final processed codes
+const int CODE_ARRAY_SIZE = 5;
+int code_array[CODE_ARRAY_SIZE];
+int code_count;
+
+// interim variables for loading in straight serial data
+const int MAX_MESSAGE_CHARS = 32;
+char message_array[MAX_MESSAGE_CHARS];
+String serial_message;
+
+// ===============================================
+// FUNCTIONS
+// ===============================================
+
+// SERVO-CONTROL RELATED
+// -----------------------------
+
+// Applies a safe 0-180 bound on any requested degree for writing to the Servo
+int degree_bounds(int degree) {
+  int safe_degree;
+  if (degree > 180) {
+    safe_degree = 180;
+  }
+  else if (degree < 0) {
+    safe_degree = 0;
+  }
+  else {
+    safe_degree = degree;
+  }
+  return safe_degree;
+}
+
+// Control a motor based on the code
+void motor_control(int motor_1_degree, int motor_2_degree) {
+  // write positions
+  servo_1.write(degree_bounds(motor_1_degree));
+  servo_2.write(degree_bounds(motor_2_degree));
+  delay(500);
+  // read positions
+  servo_1_position = servo_1.read();
+  servo_2_position = servo_2.read();
+}
+
+// POWER-MEASUREMENT RELATED
+// -----------------------------
+
+void power_measurement(){
+  void;
+}
+
+// INPUT REQUEST HANDLING
+// -----------------------------
+
+void process_input_request() {
+  // motor control
+  if (code_array[0] == 1000) {
+    motor_control(code_array[1], code_array[2]);
+  }
+  // motor positions
+  else if (code_array[0] == 2000) {
+    void;
+  }
+  // power measurements
+  else if (code_array[0] == 3000) {
+    void;
+  }
+  else {
+    active_state = ERROR_MESSAGE;
+  }
+}
+
+
+// CODE-PROCESSING RELATED
+// -----------------------------
+
+void clear_code_array() {
+  for (int i = 0; i < CODE_ARRAY_SIZE; i++) {
+    code_array[i] = 0;
+  }
+  active_index = 0;
+}
+
+// processes input string to extract codes
+void process_input_message (String serial_message) {
+  // find delimiters and endline
+  int delim_index_array[10];
+  int delim_count = 0;
+  int end_index = 0;
+
+  // convert the string to an array of character
+  serial_message.toCharArray(message_array, MAX_MESSAGE_CHARS);
+
+  // Identify the delimiter index locations and end character locations
+  for (int i = 0; i < MAX_MESSAGE_CHARS; i++) {
+    // find delimiter index
+    if (message_array[i] == DELIMITER) {
+      delim_index_array[delim_count] = i;
+      delim_count += 1;
+    }
+    // find message end index
+    if (message_array[i] == END_CHAR) {
+      end_index = i;
+    }
+  }
+
+  // If a valid input w/ end character, slice up array by delimiters to create an array of codes
+  if (end_index != 0) {
+    int loop_start_index = 0;
+    int code_array_index = 0;
+    // code count keeps track of number of codes
+    code_count = 0;
+
+    // first get the values between delimiters
+    for (int i = 0; i < delim_count; i++) {
+      String temp_string;
+      for (int j = loop_start_index; j < delim_index_array[i]; j++) {
+        temp_string += message_array[j];
+      }
+      // add to array
+      code_array[code_array_index] = temp_string.toInt();
+      code_count++;
+      // increment store location in array
+      code_array_index += 1;
+      // increment start index
+      loop_start_index = delim_index_array[i] + 1;
+    }
+    
+    // then add the last characters between final delim and end character
+    String temp_string;
+    for (int j = loop_start_index; j < end_index; j++) {
+      temp_string += message_array[j];
+    }
+    code_array[code_array_index] = temp_string.toInt();
+    code_count++;
+  }
+}
+
+
+// BROADCASTING RELATED
+// -----------------------------
+
+// sends out the Arduino's status
+void broadcast_state(long start) {
+  Serial.print(STATUS_HEADER);
+  Serial.print(DELIMITER);
+  Serial.print(active_state);
+  Serial.print(DELIMITER);
+  Serial.print(active_listening);
+  Serial.print(DELIMITER);
+  Serial.println(millis() - start);
+}
+
+// sends out data from the Arduino
+void broadcast_data() {
+  // Data header
+  Serial.print(DATA_HEADER);
+  Serial.print(DELIMITER);
+  // motor 1 position,motor 2 position,solar power
+  Serial.print(servo_1_position);
+  Serial.print(DELIMITER);
+  Serial.print(servo_2_position);
+  // measure power
+  // FIXME -- add power signal
+}
+
+void broadcast_code_array() {
+  // add protection for empty code
+  if (code_count != 0) {
+    // print all but last with delimiter
+    for (int i = 0; i < code_count - 1; i++) {
+      Serial.print(code_array[i]);
+      Serial.print(DELIMITER);
+    }
+    // print last w/ newline
+    Serial.println(code_array[code_count - 1]);
+  }
+}
+
+// ===============================================
+// SETUP AND LOOP
+// ===============================================
+
+void setup() {
+  // Initialize active state
+  active_state = UNAVAILABLE;
+  
+  // Initialize Serial
+  Serial.begin(SERIAL_BAUD_RATE);
+  
+  // Configure motor pins
+  servo_1.attach(servo_1_pin);
+  servo_2.attach(servo_2_pin);
+  
+  // Initialize motor positions
+  servo_1.write(0);
+  servo_2.write(0);
+
+  servo_1_position = servo_1.read();
+  servo_2_position = servo_2.read();
+
+  // tell Python that the program is initialized
+  active_state = ACKNOWLEDGE;
+  active_listening = 0;
+  active_index = 0;
+  send_data = false;
+}
+
+void loop() {
+  // Loop timer for debugging
+  long start = millis();
+  
+  // Listen for new commands
+  bool new_data = false;
+  if (Serial.available() > 0) {
+    serial_message = Serial.readStringUntil(MESSAGE_TERMINATOR);
+    Serial.flush();
+    new_data = true;
+  }
+  // If new command
+  if (new_data == true) {
+    process_input_message(serial_message);
+    process_input_request();
+    broadcast_code_array();
+  }
+}
