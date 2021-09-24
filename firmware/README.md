@@ -14,7 +14,7 @@ In any given message, the arduino will receive a comma-delimited string with the
 * end character (>)
 * newline character (not included in snippets below)
 
-### Motor Control
+### Codes
 
 * `1000`: Tells the Arduino that motor control is desired
   * This code is followed by two values, the desired angles for motor 1 and motor 2 respectively

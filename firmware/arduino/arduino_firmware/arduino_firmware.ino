@@ -5,6 +5,8 @@
 Servo servo_1;
 Servo servo_2;
 
+long start_ms;
+
 const int servo_1_pin = 3;
 const int servo_2_pin = 5;
 
@@ -13,23 +15,15 @@ int servo_2_position;
 
 const int SERIAL_BAUD_RATE = 9600;
 
-// for internal state
+// inbound commands
 const int MOTOR_CONTROL = 1000;
-const int MOTOR_POSITIONS = 2000;
-const int POWER_TOGGLE = 3000;
-const int LISTEN_START = 4444;
+const int SEND_MEASUREMENT = 2000;
 const int RESET = 6666;
 
-// Arduino responses
+// outbound codes
 const int ACKNOWLEDGE = 1111;
-const int UNAVAILABLE = 8888;
 const int ERROR_MESSAGE = 9999;
 
-const int STATUS_HEADER = 1;
-const int DATA_HEADER = 2;
-const char DELIMITER = ',';
-
-int active_listening;
 int active_index;
 int active_state;
 bool send_data;
@@ -40,6 +34,7 @@ bool send_data;
 // constants for message processing
 const char END_CHAR = '>';
 const char MESSAGE_TERMINATOR = '\n';
+const char DELIMITER = ',';
 
 // variables for holding the final processed codes
 const int CODE_ARRAY_SIZE = 5;
@@ -99,13 +94,8 @@ void process_input_request() {
   if (code_array[0] == 1000) {
     motor_control(code_array[1], code_array[2]);
   }
-  // motor positions
-  else if (code_array[0] == 2000) {
-    void;
-  }
-  // power measurements
-  else if (code_array[0] == 3000) {
-    void;
+  else if (code_array[0] == 6666) {
+    setup();
   }
   else {
     active_state = ERROR_MESSAGE;
@@ -182,30 +172,24 @@ void process_input_message (String serial_message) {
 // BROADCASTING RELATED
 // -----------------------------
 
-// sends out the Arduino's status
-void broadcast_state(long start) {
-  Serial.print(STATUS_HEADER);
-  Serial.print(DELIMITER);
+// sends out the Arduino's state
+void broadcast_state() {
+  float elapsed_s = (millis() - start_ms) / 1000.0;
   Serial.print(active_state);
   Serial.print(DELIMITER);
-  Serial.print(active_listening);
-  Serial.print(DELIMITER);
-  Serial.println(millis() - start);
-}
-
-// sends out data from the Arduino
-void broadcast_data() {
-  // Data header
-  Serial.print(DATA_HEADER);
-  Serial.print(DELIMITER);
-  // motor 1 position,motor 2 position,solar power
+  Serial.print(elapsed_s, 3);
   Serial.print(servo_1_position);
   Serial.print(DELIMITER);
   Serial.print(servo_2_position);
-  // measure power
-  // FIXME -- add power signal
+  Serial.println(END_CHAR);
+//  Serial.print(DELIMITER);
+//  Serial.println(millis() - start);
+
+  // reset clock
+  start_ms = millis();
 }
 
+// for debugging
 void broadcast_code_array() {
   // add protection for empty code
   if (code_count != 0) {
@@ -224,9 +208,6 @@ void broadcast_code_array() {
 // ===============================================
 
 void setup() {
-  // Initialize active state
-  active_state = UNAVAILABLE;
-  
   // Initialize Serial
   Serial.begin(SERIAL_BAUD_RATE);
   
@@ -243,15 +224,13 @@ void setup() {
 
   // tell Python that the program is initialized
   active_state = ACKNOWLEDGE;
-  active_listening = 0;
   active_index = 0;
   send_data = false;
+  clear_code_array();
+  start_ms = millis();
 }
 
 void loop() {
-  // Loop timer for debugging
-  long start = millis();
-  
   // Listen for new commands
   bool new_data = false;
   if (Serial.available() > 0) {
@@ -263,6 +242,10 @@ void loop() {
   if (new_data == true) {
     process_input_message(serial_message);
     process_input_request();
-    broadcast_code_array();
   }
+  else {
+    delay(500);
+  }
+  // lastly, broadcast state
+  broadcast_state();
 }
