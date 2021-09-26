@@ -1,9 +1,14 @@
 // Import servo library
 #include <Servo.h>
+#include <Adafruit_INA260.h>
 
 // Create two separate Servo objects for each Servo
 Servo servo_1;
 Servo servo_2;
+
+// Create ivp_1 and ivp_2 (will be added in the future with multiplexer)
+// IVP = Current, voltage, power, a shorthand for the ina260 sensor
+Adafruit_INA260 ivp_1 = Adafruit_INA260();
 
 long start_ms;
 
@@ -16,9 +21,6 @@ int servo_2_position;
 float I_ivp_1;
 float V_ivp_1;
 float P_ivp_1;
-float I_ivp_2;
-float V_ivp_2;
-float P_ivp_2;
 
 const int SERIAL_BAUD_RATE = 9600;
 
@@ -93,12 +95,9 @@ void motor_control(int motor_1_degree, int motor_2_degree) {
 
 void power_measurement() {
   // placeholder
-  I_ivp_1 = 1.0;
-  V_ivp_1 = 1.0;
-  P_ivp_1 = 1.0;
-  I_ivp_2 = 1.0;
-  V_ivp_2 = 1.0;
-  P_ivp_2 = 1.0;
+  I_ivp_1 = ivp_1.readCurrent()/1000; // convert to A
+  V_ivp_1 = ivp_1.readBusVoltage()/1000; // convert to V
+  P_ivp_1 = ivp_1.readPower()/1000; // convert to W
 }
 
 void state_update_sequence() {
@@ -218,12 +217,6 @@ void broadcast_state() {
   Serial.print(V_ivp_1, 3);
   Serial.print(DELIMITER);
   Serial.print(P_ivp_1, 3);
-  Serial.print(DELIMITER);
-  Serial.print(I_ivp_2, 3);
-  Serial.print(DELIMITER);
-  Serial.print(V_ivp_2, 3);
-  Serial.print(DELIMITER);
-  Serial.print(P_ivp_2, 3);
   // End message
   Serial.println(END_CHAR);
 //  Serial.print(DELIMITER);
@@ -254,6 +247,9 @@ void broadcast_code_array() {
 void setup() {
   // Initialize Serial
   Serial.begin(SERIAL_BAUD_RATE);
+
+  // Set to nominal state, change to error if anything arises
+  active_state = ACKNOWLEDGE;
   
   // Configure motor pins
   servo_1.attach(servo_1_pin);
@@ -266,8 +262,14 @@ void setup() {
   servo_1_position = servo_1.read();
   servo_2_position = servo_2.read();
 
+  // Initialize INA260 sensor
+  if (!ivp_1.begin()) {
+    active_state = ERROR_MESSAGE;
+  }
+  // Take power measurement
+  power_measurement();
+  
   // tell Python that the program is initialized
-  active_state = ACKNOWLEDGE;
   active_index = 0;
   send_data = false;
   clear_code_array();
