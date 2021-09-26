@@ -3,7 +3,7 @@ This page documents the expected interface between the Python RL agent
 and the Arduino firmware operating the motors / sending power measurements
 
 During each loop, the Arduino will check for any commands or state changes. At the end of each loop, Arudino will 
-broadcast its data sequence.
+broadcast its data sequence if requested.
 
 ## Communication to Arduino
 
@@ -18,6 +18,7 @@ In any given message, the arduino will receive a comma-delimited string with the
 
 * `1000`: Tells the Arduino that motor control is desired
   * This code is followed by two values, the desired angles for motor 1 and motor 2 respectively
+* `2000`: Tells the Arduino to explicitly send a state measurement
     
 ### Special commands
 * `6666`: Tells the Arduino to reset (used if Arduino is not sending expected responses)

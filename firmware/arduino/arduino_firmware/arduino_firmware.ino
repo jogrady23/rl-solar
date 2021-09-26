@@ -13,6 +13,13 @@ const int servo_2_pin = 5;
 int servo_1_position;
 int servo_2_position;
 
+float I_ivp_1;
+float V_ivp_1;
+float P_ivp_1;
+float I_ivp_2;
+float V_ivp_2;
+float P_ivp_2;
+
 const int SERIAL_BAUD_RATE = 9600;
 
 // inbound commands
@@ -68,22 +75,37 @@ int degree_bounds(int degree) {
   return safe_degree;
 }
 
+void measure_motor_position() {
+  servo_1_position = servo_1.read();
+  servo_2_position = servo_2.read();
+}
+
 // Control a motor based on the code
 void motor_control(int motor_1_degree, int motor_2_degree) {
   // write positions
   servo_1.write(degree_bounds(motor_1_degree));
+  delay(300); // to avoid power spike
   servo_2.write(degree_bounds(motor_2_degree));
-  delay(500);
-  // read positions
-  servo_1_position = servo_1.read();
-  servo_2_position = servo_2.read();
 }
 
 // POWER-MEASUREMENT RELATED
 // -----------------------------
 
-void power_measurement(){
-  void;
+void power_measurement() {
+  // placeholder
+  I_ivp_1 = 1.0;
+  V_ivp_1 = 1.0;
+  P_ivp_1 = 1.0;
+  I_ivp_2 = 1.0;
+  V_ivp_2 = 1.0;
+  P_ivp_2 = 1.0;
+}
+
+void state_update_sequence() {
+  // take a measurement of motor positions
+  measure_motor_position();
+  // take power measurements (currently not used)
+  power_measurement();
 }
 
 // INPUT REQUEST HANDLING
@@ -93,6 +115,12 @@ void process_input_request() {
   // motor control
   if (code_array[0] == 1000) {
     motor_control(code_array[1], code_array[2]);
+    state_update_sequence();
+    broadcast_state();
+  }
+  else if (code_array[0] == 2000) {
+    state_update_sequence();
+    broadcast_state();
   }
   else if (code_array[0] == 6666) {
     setup();
@@ -178,9 +206,25 @@ void broadcast_state() {
   Serial.print(active_state);
   Serial.print(DELIMITER);
   Serial.print(elapsed_s, 3);
+  Serial.print(DELIMITER);
+  // servo positions
   Serial.print(servo_1_position);
   Serial.print(DELIMITER);
   Serial.print(servo_2_position);
+  Serial.print(DELIMITER);
+  // power measurements
+  Serial.print(I_ivp_1, 3);
+  Serial.print(DELIMITER);
+  Serial.print(V_ivp_1, 3);
+  Serial.print(DELIMITER);
+  Serial.print(P_ivp_1, 3);
+  Serial.print(DELIMITER);
+  Serial.print(I_ivp_2, 3);
+  Serial.print(DELIMITER);
+  Serial.print(V_ivp_2, 3);
+  Serial.print(DELIMITER);
+  Serial.print(P_ivp_2, 3);
+  // End message
   Serial.println(END_CHAR);
 //  Serial.print(DELIMITER);
 //  Serial.println(millis() - start);
@@ -243,9 +287,4 @@ void loop() {
     process_input_message(serial_message);
     process_input_request();
   }
-  else {
-    delay(500);
-  }
-  // lastly, broadcast state
-  broadcast_state();
 }
