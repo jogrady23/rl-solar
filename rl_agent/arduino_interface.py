@@ -86,10 +86,7 @@ def map_message_to_dict(timestamp, input_message):
             'motor_2_position': input_message[3],
             'I_ivp_1': input_message[4],
             'V_ivp_1': input_message[5],
-            'P_ivp_1': input_message[6],
-            'I_ivp_2': input_message[7],
-            'V_ivp_2': input_message[8],
-            'P_ivp_2': input_message[9],
+            'P_ivp_1': input_message[6]
         }
     return final_dict
 
@@ -177,7 +174,7 @@ if __name__ == '__main__':
 
     # Run a loop where motor position incremented every 5 seconds, print out message
     print('\nBeginning loop sequence...')
-    data = loop(arduino, runtime=20)
+    data = loop(arduino, runtime=60)
     print('\t - Loop complete.')
 
     # Add relative time to returned data and print out
