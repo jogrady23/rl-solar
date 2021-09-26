@@ -2,36 +2,84 @@
 This page documents the expected interface between the Python RL agent 
 and the Arduino firmware operating the motors / sending power measurements
 
-## Control Codes
-This system utilizes a call-and-response type approach to ensure motor commands are 
-successfully sent from Python and received by the Arduino.
+During each loop, the Arduino will check for any commands or state changes. At the end of each loop, Arudino will 
+broadcast its data sequence if requested.
 
-### Arduino Recieves
+## Communication to Arduino
 
-#### Motor Control
+In any given message, the arduino will receive a comma-delimited string with the following format:
+
+* code
+* values related to code (one to many)
+* end character (>)
+* newline character (not included in snippets below)
+
+### Codes
 
 * `1000`: Tells the Arduino that motor control is desired
-  * After these codes are received, the desired degree will be broadcasted by Python to 
-Arduino (value between 0 and 180)
-  * This broadcasts an array of [motor 1, motor 2] position
-
-#### Measurement Broadcast
-* `2000`: Tells the Arduino a measurement start/stop request is inbound
-  * `0`: Stop measurement broadcast
-  * `1`: Start measurement broadcast
+  * This code is followed by two values, the desired angles for motor 1 and motor 2 respectively
+* `2000`: Tells the Arduino to explicitly send a state measurement
     
-#### Start/End of Command
-* `4444`: Tells the Arduino to start listening for a new command
-* `5555`: Tells the Arduino that it can stop listening for new commands
-* `6666`: Tells the Arduino to reset
+### Special commands
+* `6666`: Tells the Arduino to reset (used if Arduino is not sending expected responses)
 
-### Arduino Sends
+## Communication from Arduino
 
-#### Arduino Acknowledge
+At the end of each loop(), the Arduino will broadcast (as a comma-delimited string):
+
+* internal state code
+* time since last message (seconds)
+* motor 1 position
+* motor 2 position
+* current sensor 1 (A)
+* voltage sensor 1 (V)
+* power sensor 1 (W)
+* current sensor 2 (A)
+* voltage sensor 2 (V)
+* power sensor 2 (W)
+
+### Arduino Internal States
 * `1111`: The Arduino will broadcast this in response to a successfully received 
 message from Python
-* `8888`: Indicates the Arduino is completing an action and is not ready for a message
-* `9999`: Indicates the Arduino is requesting a sequence re-start / invalid data
+* `9999`: Indicates the Arduino is requesting a sequence re-start / invalid data / some error
+
+---
+
+## Examples
+
+### Nominal Case
+
+**To Arduino**
+
+In a nominal case, the Python agent may send something like:
+
+`1000,24,167>`
+
+which would indicate motor control, motor 1 = 24°, motor 2 = 167°
+
+**From Arduino**
+
+The Arduino would then respond something like:
+
+`1111,0.823,24,167,0.34,5,1.7,-0.5,5,-2.5>`
+
+### Non-Nominal Case
+
+Now, if the Arduino had some issue such that it could not complete the command, then it may send back:
+
+`9999>`
+
+to which the Python agent would attempt a reset, sending:
+
+`6666>`
+
+to which the Arduino should respond:
+
+`1111,....>`
+
+after it has successfully reset itself.
+
+
   
 
     
