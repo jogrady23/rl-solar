@@ -14,6 +14,7 @@ long start_ms;
 
 const int servo_1_pin = 3;
 const int servo_2_pin = 5;
+const int max_degree_step = 5;
 
 int servo_1_position;
 int servo_2_position;
@@ -82,12 +83,34 @@ void measure_motor_position() {
   servo_2_position = servo_2.read();
 }
 
+
+void safe_write_motor_position(Servo servo_x, int desired_degree) {
+  int current_position = servo_x.read();
+  int move_direction = -1;
+  if (desired_degree >= current_position) {
+    move_direction = 1;
+  }
+  int move_increments = int(abs(current_position - desired_degree)/max_degree_step);
+
+  if (move_increments == 0) {
+    servo_x.write(desired_degree);
+  }
+  else {
+    for (int i = 1; i <= move_increments; i++) {
+      servo_x.write(current_position + (i * move_direction * max_degree_step));
+      delay(50);
+    }
+    servo_x.write(desired_degree);
+  }
+}
+
+
 // Control a motor based on the code
 void motor_control(int motor_1_degree, int motor_2_degree) {
   // write positions
-  servo_1.write(degree_bounds(motor_1_degree));
-  delay(300); // to avoid power spike
-  servo_2.write(degree_bounds(motor_2_degree));
+  safe_write_motor_position(servo_1, degree_bounds(motor_1_degree));
+  delay(250); // to avoid power spike
+  safe_write_motor_position(servo_2, degree_bounds(motor_2_degree));
 }
 
 // POWER-MEASUREMENT RELATED
@@ -254,10 +277,8 @@ void setup() {
   // Configure motor pins
   servo_1.attach(servo_1_pin);
   servo_2.attach(servo_2_pin);
-  
-  // Initialize motor positions
-  servo_1.write(0);
-  servo_2.write(0);
+
+  motor_control(90, 90);
 
   servo_1_position = servo_1.read();
   servo_2_position = servo_2.read();
