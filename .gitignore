@@ -2,6 +2,7 @@
 *.DS_Store
 images/
 *.idea/
+*_ignore/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
