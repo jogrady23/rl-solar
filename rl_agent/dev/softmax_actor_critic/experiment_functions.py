@@ -51,7 +51,7 @@ def run_agent_experiment(exp_agent, exp_env, steps, interval):
 
 
 def make_subplots_plot(df, x, subplot_group_list, height=400, width=400, plot_title=''):
-    fig = make_subplots(rows=len(subplot_group_list), cols=1,
+    fig = make_subplots(rows=len(subplot_group_list), cols=1, shared_xaxes=True,
                         subplot_titles=[x['title'] for x in subplot_group_list])
 
     for i in range(len(subplot_group_list)):
