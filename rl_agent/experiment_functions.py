@@ -12,14 +12,6 @@ from plotly.subplots import make_subplots
 import tqdm
 from tqdm import tqdm
 
-def progress_dict_to_df(progress_dict):
-    dict_list = []
-    for x in progress_dict.keys():
-        temp_dict = progress_dict[x]
-        temp_dict['step'] = x
-        dict_list.append(temp_dict)
-    return pd.DataFrame(dict_list)
-
 
 def run_agent_experiment(exp_agent, exp_env, steps, interval):
     progress_dict = {}
