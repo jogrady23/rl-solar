@@ -13,32 +13,65 @@ import tqdm
 from tqdm import tqdm
 
 
-def run_agent_experiment(exp_agent, exp_env, steps, interval):
-    progress_dict = {}
-    exp_agent.agent_start()
-    progress_dict['0'] = {
-        'state_value': exp_agent.get_critic_array(),
-        'action_prob': exp_agent.get_actor_array(),
-        'rolling_power': exp_agent.get_agent_rolling_power(),
-        'state_visits': exp_agent.get_state_visits(),
-        'total_energy': exp_agent.get_agent_energy()
-    }
-    for i in tqdm(range(1, steps + 1)):
-        # for i in range(1, steps + 1): # no TQDM option
-        exp_agent.agent_step()
-        if i % interval == 0:
-            progress_dict[str(i)] = {
-                'state_value': exp_agent.get_critic_array(),
-                'action_prob': exp_agent.get_actor_array(),
-                'rolling_power': exp_agent.get_agent_rolling_power(),
-                'state_visits': exp_agent.get_state_visits(),
-                'total_energy': exp_agent.get_agent_energy()
-            }
-    progress_df = progress_dict_to_df(progress_dict)
-    return exp_agent, progress_dict, progress_df
+def heatmap(array, show_values=False, width=600, height=600):
+    """
+    Plot a heatmap of an array
+    
+    Args:
+        array (Numpy): A numpy array of values to plot
+    Kwargs:
+        show_values (bool): True to display values in each cell, False to hide
+        width (int): Width of the plot
+        height (int): Height of the plot
+    Returns:
+        None
+    """
+    return px.imshow(array, text_auto=show_values, width=width, height=height)
+            
 
 
-def make_subplots_plot(df, x, subplot_group_list, height=400, width=400, plot_title=''):
+def load_and_visualize_data_adjusted(data_path):
+    """
+    Load in collected data and create a 3d heatmap to visualize
+    
+    Args:
+        data_path (str): Path to the data collected
+    Returns:
+        None
+    """
+    raw_df = pd.read_csv(data_path)
+    data_df = raw_df.copy()
+    
+    # Make current positive
+    data_df['I_ivp_1'] = data_df['I_ivp_1'].abs()
+    data_df['power'] = data_df['I_ivp_1'] * data_df['V_ivp_1']
+    
+    # Generate data for visualization
+    viz_df = data_df[['power', 'motor_1_position', 'motor_2_position']]
+    viz_df = viz_df.drop_duplicates(subset=['motor_1_position', 'motor_2_position'])
+    viz_df = viz_df.sort_values(by=['motor_1_position','motor_2_position'])
+    fig = px.scatter_3d(viz_df, x='motor_1_position', y='motor_2_position', z='power',
+                      color='power', opacity=1, width=600, height=600)#, #size_max=10, # size='power',
+                   #range_z=[0,0.015], range_color=[0,0.015])
+    fig.update_traces(marker={'size': 5})
+    fig.show()
+
+
+def subplots(df, x, subplot_group_list, height=400, width=400, plot_title=''):
+    """
+    Creates subplots with plotly
+    
+    Args:
+        df (DataFrame): The dataframe containing data to plot
+        x (str): The name of the column to use as common x axis
+        subplot_group_list (list): A list of dicts containing keys 'title' and 'columns'
+    Kwargs:
+        height (int): Height of the plot
+        width (int): Width of the plot
+        plot_title (str): Title of the entire plot
+    Returns:
+        None
+    """
     fig = make_subplots(rows=len(subplot_group_list), cols=1, shared_xaxes=True,
                         subplot_titles=[x['title'] for x in subplot_group_list])
 
@@ -54,8 +87,23 @@ def make_subplots_plot(df, x, subplot_group_list, height=400, width=400, plot_ti
     fig.update_layout(height=height, width=width, title_text=plot_title)
     fig.show()
 
-def plot_array_evolution(exp_progress_dict, exp_interval, field, width_plot, height_plot, zmax=None, zmin=None):
-    matrix_list = [exp_progress_dict[x][field] for x in exp_progress_dict.keys()]
+    
+def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=None, zmin=None):
+    """
+    Plots an array over time to see changes in values visually
+    
+    Args:
+        array_list (list): A list of the arrays to plot (sequential order)
+        step_interval (int): Frequency of logging during the experiment
+    Kwargs:
+        width (int): Width of the plot
+        height (int): Height of the plot
+        zmax (float): Max value for scale, or None
+        zmin (float): Min value for scale, or None
+    Returns:
+        None
+    """
+    matrix_list = array_list
     fig = go.Figure(
         data=[go.Heatmap(z=matrix_list[0], zmax=zmax, zmin=zmin)],layout=go.Layout(
                 title="Step 0",
