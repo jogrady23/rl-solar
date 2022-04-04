@@ -103,9 +103,8 @@ def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=
     Returns:
         None
     """
-    matrix_list = array_list
     fig = go.Figure(
-        data=[go.Heatmap(z=matrix_list[0], zmax=zmax, zmin=zmin)],layout=go.Layout(
+        data=[go.Heatmap(z=array_list[0], zmax=zmax, zmin=zmin)],layout=go.Layout(
                 title="Step 0",
                 updatemenus=[dict(
                     type="buttons",
@@ -120,24 +119,36 @@ def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=
                                         "transition": {"duration": 0}}],
                                  )])]
             ),
-            frames=[go.Frame(data=[go.Heatmap(z=matrix_list[i])],
-                             layout=go.Layout(title_text=f"Step {i * exp_interval}")) for i in range(1, len(matrix_list))]
+            frames=[go.Frame(data=[go.Heatmap(z=array_list[i])],
+                             layout=go.Layout(title_text=f"Step {i * step_interval}")) for i in range(1,len(array_list))]
     )
     fig.update_yaxes(autorange="reversed")
     fig.update_layout({
-        'height': height_plot,
-        'width': width_plot}
+        'height': height,
+        'width': width}
     )
 
-    fig.show()
+    return fig
 
 
-def plot_rolling_power(progress_df, exp_env, height, width):
+def plot_rolling_power(progress_df, exp_env, height=600, width=800):
+    """
+    Creates a visualization to assess agent performance
+    
+    Args:
+        progress_df (DataFrame): The tracking df generated during an experiment
+        exp_env (SolarEnv): The environment used in the experiment
+    Kwargs:
+        width (int): Width of the plot
+        height (int): Height of the plot
+    Returns:
+        None
+    """
     max_output = exp_env.get_reward_array().max()
     progress_df['env_max'] = max_output
     progress_df['optimal_energy'] = progress_df['step'].astype(float) * max_output
     progress_df['difference'] = (progress_df['rolling_power'] - progress_df['env_max']) / progress_df['env_max']
-    make_subplots_plot(df=progress_df, x='step', subplot_group_list=[
+    subplots(df=progress_df, x='step', subplot_group_list=[
         {
             'title': 'Reward Comparison (Agent vs Max)',
             'columns': ['env_max', 'rolling_power']
@@ -145,6 +156,43 @@ def plot_rolling_power(progress_df, exp_env, height, width):
         {
             'title': 'Energy Comparison (Agent vs Max)',
             'columns': ['total_energy', 'optimal_energy']
-        }
-    ], height=height, width=width
+        },
+        {
+            'title': 'Agent Learning',
+            'columns': ['delta']
+        },
+    ], height=height, width=width, plot_title='<b>Agent Assessment</b>'
+                       )
+    
+def plot_hyperparameter_study(study_df, exp_env, height=600, width=800):
+    """
+    Creates a visualization to assess agent performance
+    
+    Args:
+        progress_df (DataFrame): The tracking df generated during an experiment
+        exp_env (SolarEnv): The environment used in the experiment
+    Kwargs:
+        width (int): Width of the plot
+        height (int): Height of the plot
+    Returns:
+        None
+    """
+    max_output = exp_env.get_reward_array().max()
+    progress_df['env_max'] = max_output
+    progress_df['optimal_energy'] = progress_df['step'].astype(float) * max_output
+    progress_df['difference'] = (progress_df['rolling_power'] - progress_df['env_max']) / progress_df['env_max']
+    subplots(df=progress_df, x='step', subplot_group_list=[
+        {
+            'title': 'Reward Comparison (Agent vs Max)',
+            'columns': ['env_max', 'rolling_power']
+        },
+        {
+            'title': 'Energy Comparison (Agent vs Max)',
+            'columns': ['total_energy', 'optimal_energy']
+        },
+        {
+            'title': 'Agent Learning',
+            'columns': ['delta']
+        },
+    ], height=height, width=width, plot_title='<b>Agent Assessment</b>'
                        )

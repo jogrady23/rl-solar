@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from common_functions import *
 
 # Function to help prep data for class
 def load_and_format_solar_df(data_path):
@@ -67,7 +68,7 @@ class SolarEnv:
         Changes the environment values by shifting over and up one
         """
         
-        self.reward_array = self.reward_array.copy().roll(1, axis=0).roll(1, axis=1)
+        self.reward_array = np.roll(np.roll(self.reward_array, 1, axis=0), 1, axis=1)
     
     def env_step(self, action_tuple, last_state_tuple):
         """
@@ -88,14 +89,14 @@ class SolarEnv:
         # Increment step count, do roll of values if specified for env
         self.total_steps += 1
         if self.roll_frequency is not None:
-            if self.total_steps // self.roll_frequency == 0:
+            if self.total_steps % self.roll_frequency == 0:
                 self.roll_values()
 
         return reward - cost, action_tuple
 
     # Access Functions
     def get_reward_array(self):
-        return self.reward_array
+        return self.reward_array.copy()
 
     def get_env_shape(self):
         return self.reward_array.shape
