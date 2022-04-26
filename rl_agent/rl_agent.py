@@ -54,7 +54,7 @@ def softmax_prob(actor_av_array, temperature=1):
     return softmax_array
 
 class SoftmaxAgent:
-    def __init__(self, actor_step_size, critic_step_size, avg_reward_step_size, temperature_value, env_shape, reward_rolling_avg_window, 
+    def __init__(self, actor_step_size, critic_step_size, avg_reward_step_size, temperature_value, env_shape, reward_rolling_avg_window, day_partitions, 
                  random_seed=RANDOM_SEED, actor_init_value=None, critic_init_value=None):
         # Set step sizes
         self.actor_step_size = actor_step_size
@@ -66,7 +66,7 @@ class SoftmaxAgent:
         self.env_shape = env_shape
         max_index_2d = self.env_shape[0] - 1
         max_index_1d = convert_2d_index_to_1d_index((max_index_2d, max_index_2d), dimensions=self.env_shape)
-        self.agent_shape = (max_index_1d + 1, max_index_1d + 1)
+        self.agent_shape = (day_partitions, max_index_1d + 1, max_index_1d + 1)
         
         # Set init values of actor and critic
         # Actor
@@ -106,17 +106,17 @@ class SoftmaxAgent:
     def agent_start(self):
         # Initialize the agent
         self.avg_reward = 0
-        self.last_state = self.agent_shape[0]//2  # Set to the middle state for init
+        self.last_state = (0, self.agent_shape[1]//2)  # Set to the middle state for init
         self.last_action = self.last_state
         self.last_reward = 0
         
         # For tracking
-        self.state_visits[convert_1d_index_to_2d_index(self.last_state, dimensions=self.env_shape)] += 1
+        self.state_visits[convert_1d_index_to_2d_index(self.last_state[1], dimensions=self.env_shape)] += 1
     
     
     def agent_policy(self):
         # Compute the softmax prob for actions in given state
-        softmax_prob_array = softmax_prob(self.actor_array[self.last_state], self.temperature)
+        softmax_prob_array = softmax_prob(self.actor_array[self.last_state[0]][self.last_state[1]], self.temperature)
         
         # Overlay the softmax probs onto actions vector
         chosen_action = self.random_generator.choice(self.actions_vector, p=softmax_prob_array)
@@ -131,18 +131,19 @@ class SoftmaxAgent:
     
     def agent_step(self, reward, next_state):
         # Compute delta
-        delta = reward - self.avg_reward + np.mean(self.critic_array[next_state]) - np.mean(self.critic_array[self.last_state])
+        delta = reward - self.avg_reward + np.mean(self.critic_array[next_state[0]][next_state[1]]) - \
+        np.mean(self.critic_array[self.last_state[0]][self.last_state[1]])
         
         # Update avg reward
         self.avg_reward += self.avg_reward_step_size * delta
         
         # Update critic weights
-        self.critic_array[self.last_state][self.last_action] += self.critic_step_size * delta
+        self.critic_array[self.last_state[0]][self.last_state[1]][self.last_action] += self.critic_step_size * delta
         
         # Update actor weights
         feature_vector = self.base_feature_vector.copy() # copy the zeros vector
         feature_vector[self.last_action] = 1 # set last action to one
-        self.actor_array[self.last_state] += self.actor_step_size * delta * (feature_vector - self.step_softmax_prob)
+        self.actor_array[self.last_state[0]][self.last_state[1]] += self.actor_step_size * delta * (feature_vector - self.step_softmax_prob)
         
         # Update last state, etc
         self.last_state = next_state
@@ -150,7 +151,7 @@ class SoftmaxAgent:
         # For tracking
         self.total_reward += reward
         self.rolling_reward = rolling_avg_calc(reward, self.rolling_reward, self.rolling_window)
-        self.state_visits[convert_1d_index_to_2d_index(self.last_state, self.env_shape)] += 1
+        self.state_visits[convert_1d_index_to_2d_index(self.last_state[1], self.env_shape)] += 1
         self.last_delta = delta
     
     # Tracking

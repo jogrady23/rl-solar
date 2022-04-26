@@ -57,7 +57,7 @@ def load_and_visualize_data_adjusted(data_path):
     fig.show()
 
 
-def subplots(df, x, subplot_group_list, height=400, width=400, plot_title=''):
+def subplots(df, x, subplot_group_list, height=400, width=400, plot_title='', x_axis_title=''):
     """
     Creates subplots with plotly
     
@@ -83,12 +83,13 @@ def subplots(df, x, subplot_group_list, height=400, width=400, plot_title=''):
                 x=df[x],
                 y=df[column_name], name=column_name
             ), row=row, col=1)
+            fig.update_xaxes(title_text=x_axis_title, row=row)
 
     fig.update_layout(height=height, width=width, title_text=plot_title)
     fig.show()
 
     
-def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=None, zmin=None):
+def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=None, zmin=None, step_name='Step'):
     """
     Plots an array over time to see changes in values visually
     
@@ -105,7 +106,7 @@ def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=
     """
     fig = go.Figure(
         data=[go.Heatmap(z=array_list[0], zmax=zmax, zmin=zmin)],layout=go.Layout(
-                title="Step 0",
+                title=step_name + " 0",
                 updatemenus=[dict(
                     type="buttons",
                     buttons=[dict(label="Play",
@@ -120,7 +121,7 @@ def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=
                                  )])]
             ),
             frames=[go.Frame(data=[go.Heatmap(z=array_list[i])],
-                             layout=go.Layout(title_text=f"Step {i * step_interval}")) for i in range(1,len(array_list))]
+                             layout=go.Layout(title_text=step_name + f" {i * step_interval}")) for i in range(1,len(array_list))]
     )
     fig.update_yaxes(autorange="reversed")
     fig.update_layout({
@@ -161,8 +162,40 @@ def plot_rolling_power(progress_df, exp_env, height=600, width=800):
             'title': 'Agent Learning',
             'columns': ['delta']
         },
-    ], height=height, width=width, plot_title='<b>Agent Assessment</b>'
+    ], height=height, width=width, plot_title='', x_axis_title='Step'
                        )
+    
+def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_increment=86400):
+    """
+    Creates a visualization to assess agent performance
+    
+    Args:
+        progress_df (DataFrame): The tracking df generated during an experiment
+        exp_env (SolarEnv): The environment used in the experiment
+    Kwargs:
+        width (int): Width of the plot
+        height (int): Height of the plot
+    Returns:
+        None
+    """
+    max_output = exp_env.get_reward_array().max()
+    progress_df['env_max'] = max_output
+    progress_df['optimal_energy'] = progress_df['step'].astype(float) * max_output
+    progress_df['day'] = (progress_df['step']//day_increment)
+    grouped_df = progress_df[['day','total_energy','optimal_energy']].groupby('day', as_index=False).max()
+    grouped_df['ratio'] = grouped_df['total_energy']/grouped_df['optimal_energy']
+    grouped_df['percentage'] = grouped_df['ratio'] * 100
+    
+    subplots(df=grouped_df, x='day', subplot_group_list=[
+        {
+            'title': 'Percentage of Optimal Energy Generated',
+            'columns': ['percentage']
+        },
+        {
+            'title': 'Energy Comparison (Agent vs Optimal)',
+            'columns': ['total_energy', 'optimal_energy']
+        },
+    ], height=height, width=width, plot_title='<b>Agent Assessment</b>', x_axis_title='Day')
     
 def plot_hyperparameter_study(study_df, exp_env, height=600, width=800):
     """
