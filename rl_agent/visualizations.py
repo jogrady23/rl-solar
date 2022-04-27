@@ -84,8 +84,10 @@ def subplots(df, x, subplot_group_list, height=400, width=400, plot_title='', x_
                 y=df[column_name], name=column_name
             ), row=row, col=1)
             fig.update_xaxes(title_text=x_axis_title, row=row)
+            if 'y_range' in subplot_group_list[i].keys():
+                fig.update_layout(yaxis_range=subplot_group_list[i]['y_range'])
 
-    fig.update_layout(height=height, width=width, title_text=plot_title)
+    fig.update_layout(height=height, width=width, title_text=plot_title, title_x=0.5)
     fig.show()
 
     
@@ -132,7 +134,7 @@ def plot_array_evolution(array_list, step_interval, width=400, height=400, zmax=
     return fig
 
 
-def plot_rolling_power(progress_df, exp_env, height=600, width=800):
+def plot_rolling_power(progress_df, exp_env, height=600, width=800, plot_title=''):
     """
     Creates a visualization to assess agent performance
     
@@ -162,10 +164,10 @@ def plot_rolling_power(progress_df, exp_env, height=600, width=800):
             'title': 'Agent Learning',
             'columns': ['delta']
         },
-    ], height=height, width=width, plot_title='', x_axis_title='Step'
+    ], height=height, width=width, plot_title=plot_title, x_axis_title='Step'
                        )
     
-def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_increment=86400):
+def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_increment=86400, plot_title=''):
     """
     Creates a visualization to assess agent performance
     
@@ -189,13 +191,14 @@ def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_incremen
     subplots(df=grouped_df, x='day', subplot_group_list=[
         {
             'title': 'Percentage of Optimal Energy Generated',
-            'columns': ['percentage']
+            'columns': ['percentage'],
+            'y_range': [50,100]
         },
         {
             'title': 'Energy Comparison (Agent vs Optimal)',
             'columns': ['total_energy', 'optimal_energy']
         },
-    ], height=height, width=width, plot_title='<b>Agent Assessment</b>', x_axis_title='Day')
+    ], height=height, width=width, plot_title=plot_title, x_axis_title='Day')
     
 def plot_hyperparameter_study(study_df, exp_env, height=600, width=800):
     """
