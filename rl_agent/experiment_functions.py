@@ -38,8 +38,9 @@ def run_experiment_step(env:SolarEnv, agent:SoftmaxAgent, step):
     
     action = agent.agent_policy()
     reward, next_state_tuple = env.env_step(convert_1d_index_to_2d_index(action, env.get_env_shape()), 
-                                            convert_1d_index_to_2d_index(agent.get_agent_last_state(), env.get_env_shape()))
-    agent.agent_step(reward, convert_2d_index_to_1d_index(next_state_tuple, env.get_env_shape()))
+                                            convert_1d_index_to_2d_index(agent.get_agent_last_state()[1], env.get_env_shape()))
+    next_state_tuple = (next_state_tuple[0], convert_2d_index_to_1d_index(next_state_tuple[1], env.get_env_shape()))
+    agent.agent_step(reward, next_state_tuple)
     
     
 # Creates a dict for metrics at a single step of an experiment
@@ -58,8 +59,8 @@ def create_tracking_dict(step, env:SolarEnv, agent:SoftmaxAgent):
     tracking_dict = {
         'step': step,
         'delta': agent.get_agent_last_delta(),
-        'state_value': agent.get_critic_array(),
-        'action_prob': agent.get_actor_array(),
+        # 'state_value': agent.get_critic_array(),
+        # 'action_prob': agent.get_actor_array(),
         'rolling_power': agent.get_agent_rolling_reward(),
         'state_visits': agent.get_state_visits(),
         'total_energy': agent.get_agent_total_reward(),
@@ -69,9 +70,9 @@ def create_tracking_dict(step, env:SolarEnv, agent:SoftmaxAgent):
 
 
 # Runs an experiment end to end
-def run_agent_experiment(environment:SolarEnv, steps, seed, actor_step_size, critic_step_size, 
+def run_agent_experiment(environment:SolarEnv, steps, seed, day_partitions, actor_step_size, critic_step_size, 
                          avg_reward_step_size, temperature, rolling_steps_measurement=10, 
-                         logging_interval=1000, hide_progress_bar=False):
+                         logging_interval=1000, hide_progress_bar=False, metric='total_reward'):
     """
     Run an end-to-end experiment with the agent and determine the total reward during the experiment
     
@@ -95,7 +96,8 @@ def run_agent_experiment(environment:SolarEnv, steps, seed, actor_step_size, cri
     experiment_agent = SoftmaxAgent(actor_step_size=actor_step_size, critic_step_size=critic_step_size,
                                 avg_reward_step_size=avg_reward_step_size,
                                 temperature_value=temperature, env_shape=environment.get_env_shape(), 
-                                reward_rolling_avg_window=rolling_steps_measurement, random_seed=seed)
+                                reward_rolling_avg_window=rolling_steps_measurement, day_partitions=day_partitions, 
+                                    random_seed=seed)
     # Initialize Agent
     experiment_agent.agent_start()
     
@@ -120,6 +122,12 @@ def run_agent_experiment(environment:SolarEnv, steps, seed, actor_step_size, cri
     
     # Return total reward from experiment
     if not tracking_df.empty:
-        return experiment_agent.get_agent_total_reward(), tracking_df
+        if metric == 'total_reward':
+            return experiment_agent.get_agent_total_reward(), tracking_df
+        else:
+            return experiment_agent.get_agent_rolling_reward(), tracking_df
     else:
-        return experiment_agent.get_agent_total_reward()
+        if metric == 'total_reward': 
+            return experiment_agent.get_agent_total_reward()
+        else:
+            return experiment_agent.get_agent_rolling_reward()

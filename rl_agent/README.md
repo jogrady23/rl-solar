@@ -4,10 +4,7 @@ This portion of the repository contains all agent-related source code.
 
 ## Running the Agent
 
-For simulation, run `rl_agent.ipynb`, which contains the agent, experiment runtimes, hyperparameter study system, etc.
-
-To actually connect a Python agent (or simply Python control) to the Arduino, a suite of useful functions exists 
-in `arduino_interface.py`
+For simulation, run `run_simulation.ipynb`, which contains the agent, experiment runtimes, hyperparameter study system, etc.
 
 ## Generating Simulation Data with the Solar Panel
 

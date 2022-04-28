@@ -58,17 +58,22 @@ class SolarEnv:
         """
         
         # Initialize with passed in value array, penalty per index of movement
-        self.reward_array = value_array
+        self.reward_array_original = value_array
+        self.reward_array = self.reward_array_original.copy()
         self.movement_penalty = movement_penalty
         self.total_steps = 0
         self.roll_frequency = roll_frequency
+        self.time_of_day = 0
+        self.time_of_day_max = 24
 
     def roll_values(self):
         """
         Changes the environment values by shifting over and up one
         """
+        self.reward_array = np.roll(np.roll(self.reward_array_original, self.time_of_day, axis=0), self.time_of_day, axis=1)
         
-        self.reward_array = np.roll(np.roll(self.reward_array, 1, axis=0), 1, axis=1)
+    def increment_time_of_day(self):
+        self.time_of_day = self.total_steps // self.roll_frequency % self.time_of_day_max
     
     def env_step(self, action_tuple, last_state_tuple):
         """
@@ -88,11 +93,10 @@ class SolarEnv:
                                    abs(last_state_tuple[1] - action_tuple[1]))
         # Increment step count, do roll of values if specified for env
         self.total_steps += 1
-        if self.roll_frequency is not None:
-            if self.total_steps % self.roll_frequency == 0:
-                self.roll_values()
+        self.increment_time_of_day()
+        self.roll_values()
 
-        return reward - cost, action_tuple
+        return reward - cost, (self.time_of_day, action_tuple)
 
     # Access Functions
     def get_reward_array(self):
