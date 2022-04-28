@@ -167,7 +167,7 @@ def plot_rolling_power(progress_df, exp_env, height=600, width=800, plot_title='
     ], height=height, width=width, plot_title=plot_title, x_axis_title='Step'
                        )
     
-def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_increment=86400, plot_title=''):
+def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_increment=86400, plot_title='', y_range=[0,100]):
     """
     Creates a visualization to assess agent performance
     
@@ -177,6 +177,9 @@ def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_incremen
     Kwargs:
         width (int): Width of the plot
         height (int): Height of the plot
+        day_increment(int): The number of steps that correspond to a day
+        plot_title (str): Title of the entire plot
+        y_range (list): the min and max value for the y_axis
     Returns:
         None
     """
@@ -192,7 +195,7 @@ def plot_energy_by_day(progress_df, exp_env, height=600, width=800, day_incremen
         {
             'title': 'Percentage of Optimal Energy Generated',
             'columns': ['percentage'],
-            'y_range': [50,100]
+            'y_range': y_range
         },
         {
             'title': 'Energy Comparison (Agent vs Optimal)',

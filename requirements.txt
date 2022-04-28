@@ -3,3 +3,4 @@ pandas
 jupyterlab
 plotly
 tqdm
+pyserial
