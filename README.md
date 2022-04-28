@@ -14,7 +14,10 @@ Complete project details at: https://www.jackogrady.me/reinforcement-learning-so
 
 ## Where Should You Start?
 
-Depends what you're looking for! I'd probably recommend going to `> rl_agent > README`, which explains everything about 
+First, install the required Python libraries which you can view in the requirements file. Simply run 
+`pip install -r requirements.txt` from this directory to install them in your interpreter.
+
+Next, I'd recommend going to `> rl_agent > README`, which explains everything about 
 the agent and how to run it. If you're more interested in the solar panel and Arduino, head to 
 `> firmware > README` to learn about that.
 
