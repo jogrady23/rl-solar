@@ -4,13 +4,20 @@ This portion of the repository contains all agent-related source code.
 
 ## Running the Agent
 
-For simulation, run `run_simulation.ipynb`, which contains the agent, experiment runtimes, hyperparameter study system, etc.
+For simulation, run `run_simulation.ipynb`, which contains the agent and experiment runtimes.
+* Two example simulation data sets are included, one of which is a light scan from indoors and
+  the other a light scan from outdoors
+
+For a hyperparameter study system, run `hyperparameter_tuning.ipynb` which has a multiprocessed 
+implementation to efficiently examine the performance of various hyperparameter combinations.
 
 ## Generating Simulation Data with the Solar Panel
 
 I generate simulation data using the actual solar panel, and code for doing so can be found at 
-`simulation_data/dev/collect_simulation_data.ipynb`. This lets you place the solar panel in some real environment, 
-sweep the entire space of motor positions, and then log the data to pass into the `rl_agent.ipynb` file above.
+`simulation_data/collect_simulation_data.ipynb`. This lets you place the solar panel in some real environment, 
+sweep the entire space of motor positions, and then log the data to pass into the `run_simulation.ipynb` file above. 
+
+See more details in the README in the `simulation_data/` directory.
 
 ## Folders
 

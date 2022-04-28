@@ -1,0 +1,6 @@
+numpy
+pandas
+jupyterlab
+plotly
+tqdm
+pyserial
